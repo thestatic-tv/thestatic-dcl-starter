@@ -23,13 +23,13 @@ npm install @thestatic-tv/dcl-sdk
 ```typescript
 import { StaticTVClient } from '@thestatic-tv/dcl-sdk'
 
-const staticTV = new StaticTVClient({
-  apiKey: 'dcls_YOUR_API_KEY_HERE',
-  videoScreen: yourVideoEntity
-})
+let staticTV: StaticTVClient
 
 export function main() {
-  staticTV.setupUI()
+  staticTV = new StaticTVClient({
+    apiKey: 'dcls_YOUR_API_KEY_HERE',
+    debug: true
+  })
 }
 ```
 
