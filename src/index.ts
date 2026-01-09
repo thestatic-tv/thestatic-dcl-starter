@@ -1,34 +1,89 @@
 /**
  * TheStatic.tv DCL SDK Starter
  *
- * 3 simple steps to add streaming video to your scene:
- * 1. Create a video screen entity
- * 2. Pass it to StaticTVClient with your API key
- * 3. Call setupUI() in main()
+ * This template shows you how to add visitor tracking and streaming
+ * features to your Decentraland scene.
  *
- * Get your API key at: thestatic.tv/dashboard
+ * SETUP:
+ * 1. Get your API key at thestatic.tv/dashboard
+ * 2. Replace 'dcls_YOUR_API_KEY_HERE' below with your key
+ * 3. Run: npm start
+ *
+ * TIERS:
+ * - Free: Visitor tracking only (this works out of the box!)
+ * - Standard ($10/mo): Adds Guide UI and Chat UI
+ * - Pro ($15/mo): Adds Admin Panel for video/mod controls
  */
 import { StaticTVClient } from '@thestatic-tv/dcl-sdk'
-import { engine, Transform, MeshRenderer, MeshCollider } from '@dcl/sdk/ecs'
-import { Vector3, Quaternion } from '@dcl/sdk/math'
+import ReactEcs, { ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 
-// STEP 1: Create your video screen
-const videoScreen = engine.addEntity()
-Transform.create(videoScreen, {
-  position: Vector3.create(8, 3, 14),
-  scale: Vector3.create(8, 4.5, 0.1),
-  rotation: Quaternion.fromEulerDegrees(0, 0, 0)
-})
-MeshRenderer.setPlane(videoScreen)
-MeshCollider.setPlane(videoScreen)
+// =============================================================================
+// SDK SETUP
+// =============================================================================
 
-// STEP 2: Create StaticTVClient with your API key
-export const staticTV = new StaticTVClient({
-  apiKey: 'dcls_YOUR_API_KEY_HERE',
-  videoScreen: videoScreen
-})
+// Create the SDK client - this starts tracking visitors automatically
+let staticTV: StaticTVClient
 
-// STEP 3: Call setupUI() in main()
 export function main() {
-  staticTV.setupUI()
+  // Initialize with your API key
+  staticTV = new StaticTVClient({
+    apiKey: 'dcls_YOUR_API_KEY_HERE', // <-- Replace with your key!
+    debug: true // Set to false in production
+  })
+
+  // Initialize UI features (Standard/Pro tiers only)
+  // Free tier users: this does nothing, but won't break anything
+  initUI()
+
+  console.log('[thestatic.tv] Starter scene loaded!')
 }
+
+// =============================================================================
+// UI SETUP (Standard/Pro only)
+// =============================================================================
+
+// Initialize Guide and Chat UIs if available on your tier
+async function initUI() {
+  // Wait for SDK to determine your tier (takes a moment after connect)
+  let attempts = 0
+  while (staticTV.isLite && attempts < 20) {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    attempts++
+  }
+
+  // Initialize UI modules if available
+  if (staticTV.guideUI) {
+    await staticTV.guideUI.init()
+    console.log('[thestatic.tv] Guide UI ready - browse channels!')
+  }
+
+  if (staticTV.chatUI) {
+    await staticTV.chatUI.init()
+    console.log('[thestatic.tv] Chat UI ready - talk to visitors!')
+  }
+
+  // Log which tier was detected
+  if (staticTV.isLite) {
+    console.log('[thestatic.tv] Free tier - visitor tracking active')
+  } else {
+    console.log('[thestatic.tv] Standard/Pro tier - all features enabled')
+  }
+}
+
+// =============================================================================
+// UI RENDERER (Required for Guide/Chat to appear)
+// =============================================================================
+
+// This MUST be outside main() - it's a DCL requirement
+// Renders the Guide and Chat panels when toggled open
+ReactEcsRenderer.setUiRenderer(() => {
+  if (!staticTV) return null
+
+  return ReactEcs.createElement(UiEntity, {
+    uiTransform: { width: '100%', height: '100%', positionType: 'absolute' },
+    children: [
+      staticTV.guideUI?.getComponent(),
+      staticTV.chatUI?.getComponent()
+    ].filter(Boolean)
+  })
+})
